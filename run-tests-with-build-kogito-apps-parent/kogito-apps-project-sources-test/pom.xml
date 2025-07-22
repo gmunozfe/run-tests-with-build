@@ -111,4 +111,81 @@
       </plugin>
     </plugins>
   </build>
+  <profiles>
+    <profile>
+  <id>preinstall-data-index-common</id>
+  <activation>
+    <activeByDefault>true</activeByDefault>
+  </activation>
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.codehaus.gmavenplus</groupId>
+        <artifactId>gmavenplus-plugin</artifactId>
+        <version>${gmavenplus.plugin.version}</version>
+        <executions>
+          <execution>
+            <id>preinstall-data-index-common</id>
+            <phase>validate</phase>
+            <goals>
+              <goal>execute</goal>
+            </goals>
+            <configuration>
+              <scripts>
+                <script>
+                  // Locate kogito sources dir
+                  def base = new File(project.basedir, "../../run-tests-with-build-project-sources-dependency-get/target/sources")
+                  def match = base.listFiles()?.find { it.name.startsWith("kogito-apps-") }
+                  if (!match) {
+                    throw new RuntimeException("No kogito-apps-* folder found under target/sources")
+                  }
+                  def kogitoDir = new File(base, match.name)
+                  println "Detected kogito sources dir: ${kogitoDir}"
+
+                  // Detect settings.xml from multiple locations
+                  def candidates = [
+  new File(kogitoDir, ".mvn/settings.xml"),
+  System.getenv("M2_HOME") ? new File(System.getenv("M2_HOME"), "conf/settings.xml") : null,
+  System.getenv("WORKSPACE") ? new File(System.getenv("WORKSPACE"), ".m2/settings.xml") : null,
+  new File(System.getProperty("user.home"), ".m2/settings.xml")
+].findAll { it != null &amp;&amp; it.exists() }
+
+
+
+                  def mvnArgs = ["mvn", "clean", "install",
+                                 "-pl", ":data-index-service-common",
+                                 "-am",
+                                 "-DskipTests", "-Dmaven.test.skip=true",
+                                 "-Denforcer.skip=true"]
+
+                  if (!candidates.isEmpty()) {
+  def mvnSettings = candidates[0]
+  println "Using settings.xml: ${mvnSettings}"
+  mvnArgs += ["-s", mvnSettings.absolutePath]
+} else {
+  println "No settings.xml found in any known location — proceeding with Maven defaults."
+}
+                  println "Executing command: ${mvnArgs.join(' ')}"
+                  def pb = new ProcessBuilder(mvnArgs)
+                  pb.directory(kogitoDir)
+                  pb.inheritIO()
+                  def proc = pb.start()
+                  def exitCode = proc.waitFor()
+                  if (exitCode != 0) {
+                    throw new RuntimeException("Preinstall Maven build failed with exit code ${exitCode}")
+                  } else {
+                    println "✅ Preinstall build for data-index-service-common completed successfully."
+                  }
+                </script>
+              </scripts>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</profile>
+
+  </profiles>
+
 </project>
