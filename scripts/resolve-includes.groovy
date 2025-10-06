@@ -81,7 +81,13 @@ private String trimPrefix(Path value, Path prefix) {
  * @return list of strings for paths that don't have any children in the list
  */
 private List<String> resolveLeafProjects(Stream<String> projects) {
-    List<String> lines = projects.map({ it -> trimPrefix(Path.of(it), new File(basedir).toPath()) }).collect(Collectors.toList()).sort()
+    //List<String> lines = projects.map({ it -> trimPrefix(Path.of(it), new File(basedir).toPath()) }).collect(Collectors.toList()).sort()
+    
+    // keep the same order Maven produced, without sorting
+    List<String> lines = projects
+        .map({ it -> trimPrefix(Path.of(it), new File(basedir).toPath()) })
+        .collect(Collectors.toList())
+    
     List<String> leafProjects = new ArrayList<>()
     def logFile = "leaf-projects.log"
     log.info("Starting leaf projects resolution, results will be in ${Path.of(logdir).resolve(logFile).toString()}")
